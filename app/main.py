@@ -12,8 +12,16 @@ API_FACTORY_KEY = os.getenv("API_FACTORY_KEY")
 ANTHROPIC_KEY = os.getenv("ANTHROPIC_API_KEY")
 client = anthropic.Anthropic(api_key=ANTHROPIC_KEY)
 
-app = FastAPI(title="LeadFactory API")
+app = FastAPI(
+    title="LeadFactory API",
+    description="Lead-Qualifizierung und KI-gestützte Briefverarbeitung für KMU",
+    version="2.0.0",
+)
 api_key_header = APIKeyHeader(name="X-API-KEY", auto_error=False)
+
+# Brief-Verarbeitungs-Agent einbinden
+from app.routers.brief import router as brief_router
+app.include_router(brief_router)
 
 SYSTEM_PROMPT = """
 You are a data extraction engine. Output ONLY valid JSON.
