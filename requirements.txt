@@ -7,3 +7,6 @@ python-multipart>=0.0.9
 watchdog>=4.0.0
 requests>=2.32.0
 python-dotenv>=1.0.0
+sqlalchemy>=2.0.0
+apscheduler>=3.10.0
+python-dateutil>=2.9.0

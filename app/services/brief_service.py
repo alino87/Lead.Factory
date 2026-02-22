@@ -9,7 +9,6 @@ Verarbeitet gescannte Briefe (Bilder oder PDFs als Base64) mit Claude Vision:
 - Bereitet Rechnungen zur Überweisung vor
 """
 
-import os
 import json
 import logging
 import base64
@@ -18,12 +17,12 @@ from typing import Optional
 
 import anthropic
 
+from app.config import settings
 from app.models.brief import BriefAnalyse, Termin, Zahlungsinfo
 
 logger = logging.getLogger("leadfactory.brief")
 
-ANTHROPIC_KEY = os.getenv("ANTHROPIC_API_KEY")
-client = anthropic.Anthropic(api_key=ANTHROPIC_KEY)
+client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
 
 _SYSTEM_PROMPT_TEMPLATE = """Du bist ein professioneller Büroassistent für Einzelunternehmer und kleine Unternehmen in Deutschland/Österreich/Schweiz.
 Heute ist: {heute}
