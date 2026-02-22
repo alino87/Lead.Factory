@@ -1,8 +1,8 @@
 @echo off
 REM ============================================================
-REM  LeadFactory – Starter für Windows
-REM  Voraussetzung: Python 3.10+ muss installiert sein
-REM  https://www.python.org/downloads/
+REM  LeadFactory – Vollautomatischer Starter für Windows
+REM  Startet Server + Ordner-Watcher gleichzeitig.
+REM  Voraussetzung: Python 3.10+  https://www.python.org/downloads/
 REM ============================================================
 
 setlocal
@@ -29,14 +29,32 @@ REM --- Abhängigkeiten installieren ---
 echo [INFO] Installiere Abhaengigkeiten...
 call venv\Scripts\pip install -q -r requirements.txt
 
-REM --- Server starten ---
+REM --- Scan-Eingang und Archiv anlegen ---
+if not exist "Scanner-Eingang" mkdir "Scanner-Eingang"
+if not exist "Archiv"          mkdir "Archiv"
+
+REM --- Server im Hintergrund starten ---
 echo.
+echo [INFO] Starte API-Server ...
+start "LeadFactory Server" /min venv\Scripts\uvicorn app.main:app --host 0.0.0.0 --port 8000
+
+REM --- Kurz warten bis Server hochgefahren ist ---
+timeout /t 3 /nobreak >nul
+
+REM --- Watcher im Vordergrund starten ---
 echo ============================================================
-echo  LeadFactory laeuft unter: http://localhost:8000
-echo  API-Docs:                 http://localhost:8000/docs
-echo  Stoppen mit:              Strg+C
+echo  LeadFactory laeuft vollautomatisch!
+echo.
+echo  Scanner-Eingang:  %CD%\Scanner-Eingang
+echo  Archiv:           %CD%\Archiv
+echo  API-Docs:         http://localhost:8000/docs
+echo.
+echo  Scanne Dokumente in den Ordner "Scanner-Eingang"
+echo  Der Agent verarbeitet sie automatisch.
+echo.
+echo  Stoppen mit: Strg+C (beide Fenster schliessen)
 echo ============================================================
 echo.
-call venv\Scripts\uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+venv\Scripts\python watcher.py
 
 endlocal

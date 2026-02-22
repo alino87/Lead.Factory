@@ -1,14 +1,18 @@
 #!/usr/bin/env bash
 # ============================================================
-#  LeadFactory – Starter für macOS / Linux
-#  Voraussetzung: Python 3.10+ muss installiert sein
+#  LeadFactory – Vollautomatischer Starter für macOS / Linux
+#  Startet Server + Ordner-Watcher gleichzeitig.
+#  Voraussetzung: Python 3.10+
 # ============================================================
 
 set -e
 
 # --- .env laden ---
 if [ -f .env ]; then
-    export $(grep -v '^#' .env | grep -v '^$' | xargs)
+    set -a
+    # shellcheck disable=SC1091
+    source .env
+    set +a
 else
     echo "[FEHLER] .env Datei nicht gefunden!"
     echo "Kopiere .env.example nach .env und trage deine API-Schluessel ein."
@@ -35,12 +39,53 @@ fi
 echo "[INFO] Installiere Abhaengigkeiten..."
 venv/bin/pip install -q -r requirements.txt
 
-# --- Server starten ---
+# --- Scan-Eingang und Archiv anlegen ---
+mkdir -p "${SCAN_EINGANG:-Scanner-Eingang}"
+mkdir -p "${ARCHIV_ORDNER:-Archiv}"
+
+# --- Aufräumen beim Beenden (Strg+C) ---
+SERVER_PID=""
+cleanup() {
+    echo ""
+    echo "[INFO] Beende Server und Watcher ..."
+    if [ -n "$SERVER_PID" ]; then
+        kill "$SERVER_PID" 2>/dev/null || true
+    fi
+    exit 0
+}
+trap cleanup INT TERM
+
+# --- Server im Hintergrund starten ---
+echo "[INFO] Starte API-Server ..."
+venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000 &
+SERVER_PID=$!
+
+# Warten bis Server antwortet
+echo -n "[INFO] Warte auf Server"
+for i in $(seq 1 15); do
+    sleep 1
+    if curl -s http://localhost:8000/health >/dev/null 2>&1; then
+        echo " OK"
+        break
+    fi
+    echo -n "."
+done
+
+# --- Info ausgeben ---
 echo ""
 echo "============================================================"
-echo " LeadFactory läuft unter: http://localhost:8000"
-echo " API-Docs:                http://localhost:8000/docs"
-echo " Stoppen mit:             Ctrl+C"
+echo " LeadFactory läuft vollautomatisch!"
+echo ""
+echo " Scanner-Eingang:  $(pwd)/${SCAN_EINGANG:-Scanner-Eingang}"
+echo " Archiv:           $(pwd)/${ARCHIV_ORDNER:-Archiv}"
+echo " API-Docs:         http://localhost:8000/docs"
+echo ""
+echo " Scanne Dokumente in den Ordner 'Scanner-Eingang'"
+echo " Der Agent verarbeitet sie automatisch."
+echo ""
+echo " Stoppen mit: Ctrl+C"
 echo "============================================================"
 echo ""
-venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+# --- Watcher im Vordergrund starten ---
+venv/bin/python watcher.py
