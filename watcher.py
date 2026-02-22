@@ -39,6 +39,7 @@ load_dotenv()
 
 SCAN_EINGANG = Path(os.getenv("SCAN_EINGANG", "./Scanner-Eingang"))
 ARCHIV_ORDNER = Path(os.getenv("ARCHIV_ORDNER", "./Archiv"))
+FEHLER_ORDNER = SCAN_EINGANG / "_Fehler"   # Dateien die nicht verarbeitet werden konnten
 API_URL = os.getenv("API_URL", "http://localhost:8000")
 API_KEY = os.getenv("API_FACTORY_KEY", "")
 UNTERNEHMENSNAME = os.getenv("UNTERNEHMENSNAME", "")
@@ -169,7 +170,11 @@ def verarbeite_datei(pfad: Path) -> None:
     log.info(f"Sende an Agenten: {pfad.name} ...")
     ergebnis = sende_an_agenten(pfad)
     if ergebnis is None:
-        log.error(f"Verarbeitung fehlgeschlagen: {pfad.name}")
+        # Datei in Fehler-Ordner verschieben statt still ignorieren
+        FEHLER_ORDNER.mkdir(parents=True, exist_ok=True)
+        ziel = FEHLER_ORDNER / pfad.name
+        shutil.move(str(pfad), str(ziel))
+        log.error(f"Verarbeitung fehlgeschlagen – verschoben nach: {ziel}")
         return
 
     # Ergebnis zusammenfassen
@@ -229,6 +234,7 @@ def main():
     log.info("=" * 60)
     log.info(f"  Scan-Eingang:  {SCAN_EINGANG.resolve()}")
     log.info(f"  Archiv:        {ARCHIV_ORDNER.resolve()}")
+    log.info(f"  Fehler:        {FEHLER_ORDNER.resolve()}")
     log.info(f"  Server:        {API_URL}")
     if UNTERNEHMENSNAME:
         log.info(f"  Unternehmen:   {UNTERNEHMENSNAME}")

@@ -3,3 +3,8 @@ __pycache__/
 *.pyc
 *.pyo
 .DS_Store
+venv/
+Scanner-Eingang/
+Archiv/
+watcher.log
+*.analyse.json

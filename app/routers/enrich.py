@@ -1,5 +1,6 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
+from app.dependencies import require_api_key
 from app.models.lead import LeadRequest, LeadResponse
 from app.services import anthropic_service, gatekeeper
 
@@ -7,7 +8,7 @@ router = APIRouter()
 
 
 @router.post("/enrich", response_model=LeadResponse)
-async def enrich_lead(lead: LeadRequest) -> LeadResponse:
+async def enrich_lead(lead: LeadRequest, _: str = Depends(require_api_key)) -> LeadResponse:
     is_valid, skip_reason = gatekeeper.validate(lead)
     if not is_valid:
         return LeadResponse(enrichment_skipped=True, skip_reason=skip_reason)

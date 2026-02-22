@@ -84,15 +84,37 @@ def _baue_system_prompt() -> str:
     return _SYSTEM_PROMPT_TEMPLATE.format(heute=date.today().isoformat())
 
 
+def _baue_dokument_block(bild_base64: str, media_type: str) -> dict:
+    """
+    Erzeugt den richtigen Content-Block je nach Dateiformat.
+    Claude API: PDFs → "document", Bilder → "image"
+    """
+    if media_type == "application/pdf":
+        return {
+            "type": "document",
+            "source": {
+                "type": "base64",
+                "media_type": "application/pdf",
+                "data": bild_base64,
+            },
+        }
+    return {
+        "type": "image",
+        "source": {
+            "type": "base64",
+            "media_type": media_type,
+            "data": bild_base64,
+        },
+    }
+
+
 def _analyse_mit_claude(
     bild_base64: str,
     media_type: str,
     unternehmensname: Optional[str] = None,
 ) -> dict:
-    """Sendet das Bild an Claude Opus und gibt das geparste JSON zurück."""
-    kontext = ""
-    if unternehmensname:
-        kontext = f"Der Empfänger heißt: {unternehmensname}\n\n"
+    """Sendet das Dokument an Claude Opus und gibt das geparste JSON zurück."""
+    kontext = f"Der Empfänger heißt: {unternehmensname}\n\n" if unternehmensname else ""
 
     with client.messages.stream(
         model="claude-opus-4-6",
@@ -103,14 +125,7 @@ def _analyse_mit_claude(
             {
                 "role": "user",
                 "content": [
-                    {
-                        "type": "image",
-                        "source": {
-                            "type": "base64",
-                            "media_type": media_type,
-                            "data": bild_base64,
-                        },
-                    },
+                    _baue_dokument_block(bild_base64, media_type),
                     {
                         "type": "text",
                         "text": (
