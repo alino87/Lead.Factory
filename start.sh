@@ -20,10 +20,11 @@ else
 fi
 
 # --- Python-Version prüfen (min. 3.10) ---
-PY=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>/dev/null || echo "0.0")
-REQUIRED="3.10"
-if [ "$(printf '%s\n' "$REQUIRED" "$PY" | sort -V | head -n1)" != "$REQUIRED" ]; then
-    echo "[FEHLER] Python $REQUIRED oder neuer wird benötigt (gefunden: $PY)"
+# Nutzt Python selbst für den Versionsvergleich – funktioniert auf macOS (BSD)
+# und Linux (GNU) gleichermaßen, kein sort -V benötigt.
+if ! python3 -c "import sys; sys.exit(0 if sys.version_info >= (3, 10) else 1)" 2>/dev/null; then
+    PY=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>/dev/null || echo "nicht gefunden")
+    echo "[FEHLER] Python 3.10 oder neuer wird benötigt (gefunden: $PY)"
     echo "macOS:  brew install python@3.12"
     echo "Ubuntu: sudo apt install python3.12"
     exit 1
@@ -76,8 +77,10 @@ echo ""
 echo "============================================================"
 echo " LeadFactory läuft vollautomatisch!"
 echo ""
-echo " Scanner-Eingang:  $(pwd)/${SCAN_EINGANG:-Scanner-Eingang}"
-echo " Archiv:           $(pwd)/${ARCHIV_ORDNER:-Archiv}"
+SCAN_ABS=$(python3 -c "import os,sys; print(os.path.abspath(sys.argv[1]))" "${SCAN_EINGANG:-Scanner-Eingang}")
+ARCHIV_ABS=$(python3 -c "import os,sys; print(os.path.abspath(sys.argv[1]))" "${ARCHIV_ORDNER:-Archiv}")
+echo " Scanner-Eingang:  $SCAN_ABS"
+echo " Archiv:           $ARCHIV_ABS"
 echo " API-Docs:         http://localhost:8000/docs"
 echo ""
 echo " Scanne Dokumente in den Ordner 'Scanner-Eingang'"
