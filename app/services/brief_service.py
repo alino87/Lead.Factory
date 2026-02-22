@@ -25,10 +25,8 @@ logger = logging.getLogger("leadfactory.brief")
 ANTHROPIC_KEY = os.getenv("ANTHROPIC_API_KEY")
 client = anthropic.Anthropic(api_key=ANTHROPIC_KEY)
 
-HEUTE = date.today().isoformat()
-
-SYSTEM_PROMPT = f"""Du bist ein professioneller Büroassistent für Einzelunternehmer und kleine Unternehmen in Deutschland/Österreich/Schweiz.
-Heute ist: {HEUTE}
+_SYSTEM_PROMPT_TEMPLATE = """Du bist ein professioneller Büroassistent für Einzelunternehmer und kleine Unternehmen in Deutschland/Österreich/Schweiz.
+Heute ist: {heute}
 
 Deine Aufgabe: Analysiere gescannte Briefe und liefere strukturierte Informationen auf Deutsch.
 
@@ -81,6 +79,11 @@ Regeln:
 """
 
 
+def _baue_system_prompt() -> str:
+    """Erzeugt den System-Prompt mit dem aktuellen Datum (plattformunabhängig)."""
+    return _SYSTEM_PROMPT_TEMPLATE.format(heute=date.today().isoformat())
+
+
 def _analyse_mit_claude(
     bild_base64: str,
     media_type: str,
@@ -95,7 +98,7 @@ def _analyse_mit_claude(
         model="claude-opus-4-6",
         max_tokens=4096,
         thinking={"type": "adaptive"},
-        system=SYSTEM_PROMPT,
+        system=_baue_system_prompt(),
         messages=[
             {
                 "role": "user",
@@ -138,10 +141,11 @@ def _analyse_mit_claude(
 
 def _baue_brief_analyse(rohdaten: dict) -> BriefAnalyse:
     """Konvertiert das rohe JSON-Dict in ein typisiertes BriefAnalyse-Objekt."""
+    heute = date.today().isoformat()
     termine = [
         Termin(
             titel=t.get("titel", ""),
-            datum=t.get("datum", HEUTE),
+            datum=t.get("datum", heute),
             uhrzeit=t.get("uhrzeit"),
             beschreibung=t.get("beschreibung", ""),
             frist=t.get("frist", False),
@@ -154,7 +158,7 @@ def _baue_brief_analyse(rohdaten: dict) -> BriefAnalyse:
         z = rohdaten["zahlungsinfo"]
         zahlungsinfo = Zahlungsinfo(
             betrag=z.get("betrag", ""),
-            faelligkeitsdatum=z.get("faelligkeitsdatum", HEUTE),
+            faelligkeitsdatum=z.get("faelligkeitsdatum", heute),
             iban=z.get("iban"),
             bic=z.get("bic"),
             verwendungszweck=z.get("verwendungszweck"),
