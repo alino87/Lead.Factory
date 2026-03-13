@@ -1,30 +1,32 @@
 """
-Draft state machine – "Draft is Law".
+Draft state machine — SPEC §5.2 "Draft is Law".
 
-Valid transitions:
-  DRAFT      → APPROVED | REJECTED | NEEDS_REVIEW
-  APPROVED   → EXECUTED | NEEDS_REVIEW
-  REJECTED   → DRAFT (re-edit creates new version)
-  NEEDS_REVIEW → DRAFT | APPROVED | REJECTED
+Allowed transitions (exakt nach SPEC §5.2):
+  DRAFT        → APPROVED | REJECTED
+  NEEDS_REVIEW → APPROVED | REJECTED
+  APPROVED     → EXECUTED
+  EXECUTED     → ARCHIVED
+  REJECTED     → (terminal – edit creates new version)
+  ARCHIVED     → (terminal)
 
-execute_action() MUST raise IllegalStateError unless status == APPROVED.
+Hard rule: execute_action() MUST raise IllegalStateError unless status == APPROVED.
 """
 
 from malin.app.errors import IllegalStateError
 from malin.app.models.tables import DraftStatus
 
-# Allowed transitions: current_status → set of valid next statuses
 _TRANSITIONS: dict[DraftStatus, set[DraftStatus]] = {
-    DraftStatus.DRAFT:        {DraftStatus.APPROVED, DraftStatus.REJECTED, DraftStatus.NEEDS_REVIEW},
-    DraftStatus.APPROVED:     {DraftStatus.EXECUTED, DraftStatus.NEEDS_REVIEW},
-    DraftStatus.REJECTED:     {DraftStatus.DRAFT},
-    DraftStatus.NEEDS_REVIEW: {DraftStatus.DRAFT, DraftStatus.APPROVED, DraftStatus.REJECTED},
-    DraftStatus.EXECUTED:     set(),  # terminal state
+    DraftStatus.DRAFT:        {DraftStatus.APPROVED, DraftStatus.REJECTED},
+    DraftStatus.NEEDS_REVIEW: {DraftStatus.APPROVED, DraftStatus.REJECTED},
+    DraftStatus.APPROVED:     {DraftStatus.EXECUTED},
+    DraftStatus.EXECUTED:     {DraftStatus.ARCHIVED},
+    DraftStatus.REJECTED:     set(),
+    DraftStatus.ARCHIVED:     set(),
 }
 
 
 def validate_transition(current: DraftStatus, target: DraftStatus) -> None:
-    """Raise IllegalStateError if the transition is not allowed."""
+    """Raise IllegalStateError if the transition is not allowed per SPEC §5.2."""
     allowed = _TRANSITIONS.get(current, set())
     if target not in allowed:
         raise IllegalStateError(
@@ -35,8 +37,8 @@ def validate_transition(current: DraftStatus, target: DraftStatus) -> None:
 
 def validate_can_execute(status: DraftStatus) -> None:
     """
-    Guard for execute_action: MUST be APPROVED.
-    This is the core "Draft is Law" enforcement.
+    SPEC §5.2 Hard rule:
+    execute_action() darf nur wenn status == APPROVED, sonst IllegalStateError.
     """
     if status != DraftStatus.APPROVED:
         raise IllegalStateError(
